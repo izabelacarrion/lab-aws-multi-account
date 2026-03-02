@@ -1,0 +1,76 @@
+name: Deploy Infraestrutura
+run-name: ${{ github.actor }} iniciou o deploy 
+
+on:
+  push:
+    branches: [ "stg", "prod" ]
+
+permissions:
+  id-token: write # permite que a action solicite o token OIDC
+  contents: read  # permite que a action baixe o seu código
+
+jobs:
+    # 1. Validação do código
+  codevalidate:
+    name: "Verifica o código Terraform"
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: hashicorp/setup-terraform@v3
+      - run: terraform init -backend=false
+      - run: terraform validate
+
+    # 2. Verificação de Segurança
+  security_scan:
+    name: "Análise de Segurança (tfsec)"
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout código
+        uses: actions/checkout@v4
+        
+      - name: Rodar tfsec
+        uses: aquasecurity/tfsec-action@v1.0.0
+        with:
+          soft_fail: true
+          
+    # 3. Provisionamento do ambiente
+  infraestrutura:
+    runs-on: ubuntu-latest
+    needs: [codevalidate, security_scan]
+    env:
+        TF_VAR_bloco_ips_liberados: ${{ secrets.IPS_PERMITIDOS }}
+    steps:
+      - name: Checkout código
+        uses: actions/checkout@v4
+
+      - name: Configurar AWS via OIDC
+        uses: aws-actions/configure-aws-credentials@v4
+        with:
+          role-to-assume: ${{ secrets.AWS_ROLE_ARN }}
+          aws-region: ${{ secrets.AWS_DEFAULT_REGION }}
+
+      - name: Setup Terraform
+        uses: hashicorp/setup-terraform@v3
+
+      - name: Criar arquivo de backend (PROD)
+        if: github.ref == 'refs/heads/prod' 
+        run: |
+          cat <<'EOF' > backend-config.tfvars
+          ${{ secrets.BACKEND_CONFIG_PROD }}
+          EOF
+
+      - name: Criar arquivo de backend (STG)
+        if: github.ref == 'refs/heads/stg' 
+        run: |
+          cat <<'EOF' > backend-config.tfvars
+          ${{ secrets.BACKEND_CONFIG_STG }}
+          EOF
+
+      - name: Terraform Init
+        run: terraform init -backend-config="backend-config.tfvars"
+
+      - name: Terraform Plan
+        run: terraform plan
+
+      - name: Terraform Apply
+        run: terraform apply -auto-approve
