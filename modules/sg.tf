@@ -1,19 +1,10 @@
-# Código que cria toda parte de Security Groups e Regras de entrada
+# Código que cria toda parte de Security Groups, Regras de entrada e saída liberada
 
 #Cria um Security Group com base no ambiente
 resource "aws_security_group" "sg_terraform" {
   name        = "sg_${var.ambiente}"
   description = "SG do ambiente ${var.ambiente}"
   vpc_id      = aws_vpc.terraform-vpc.id
-
-  ingress { # regra de entrada
-    description = "Port custom por ambiente"
-    # Verifica qual ambiente é e cria regra de entrada
-    from_port   = var.config_ambientes[var.ambiente].porta_app
-    to_port     = var.config_ambientes[var.ambiente].porta_app
-    protocol    = "tcp"
-    cidr_blocks = ["0.0.0.0/0"]
-  }
 
   egress { # Regra de saída
     from_port   = 0

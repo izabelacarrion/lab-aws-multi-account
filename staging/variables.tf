@@ -14,5 +14,4 @@ variable "nome_subnets" {
 variable "bloco_ips_liberados" {
   type        = string
   description = "Define os endereços de IP liberados"
-  default     = "192.168.0.50/32"
 }

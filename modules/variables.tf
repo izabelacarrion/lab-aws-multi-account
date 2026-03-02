@@ -17,18 +17,3 @@ variable "bloco_ips_liberados" {
   type        = string
   description = "Define os endereços de IP liberados"
 }
-
-variable "config_ambientes" {
-  type = map(object({
-    porta_app = number
-  }))
-
-  default = {
-    stg = {
-      porta_app = 1234
-    }
-    prod = {
-      porta_app = 9999
-    }
-  }
-}
