@@ -39,6 +39,7 @@ jobs:
     needs: [codevalidate, security_scan]
     env:
         TF_VAR_bloco_ips_liberados: ${{ secrets.IPS_PERMITIDOS }}
+        TF_WORKING_DIR: ${{ github.ref == 'refs/heads/prod' && './production' || './staging' }}
     steps:
       - name: Checkout código
         uses: actions/checkout@v4
@@ -67,10 +68,12 @@ jobs:
           EOF
 
       - name: Terraform Init
-        run: terraform init -backend-config="backend-config.tfvars"
+        run: terraform init -backend-config=../backend-config.tfvars -reconfigure
+        working-directory: ${{ env.TF_WORKING_DIR }}
 
       - name: Terraform Plan
         run: terraform plan
+        working-directory: ${{ env.TF_WORKING_DIR }}
 
       - name: Terraform Apply
         run: terraform apply -auto-approve
